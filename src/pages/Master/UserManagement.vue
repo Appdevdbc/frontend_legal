@@ -92,63 +92,23 @@
             </div>
           </template>
           
-          <template v-slot:body-cell-account_active="props">
-            <q-td :props="props" class="tw-py-3">
-              <q-badge 
-                :color="props.row.account_active === 'Active' ? 'green-5' : 'red-5'" 
-                :label="props.row.account_active === 'Active' ? 'Active' : 'Inactive'"
-                class="tw-px-4 tw-py-1 tw-font-medium tw-text-xs tw-rounded-full"
-              />
-            </q-td>
-          </template>
-          
           <template v-slot:body-cell="props">
             <q-td :props="props" class="tw-py-3 tw-text-slate-700 tw-text-sm">
-              {{ props.value }}
+              {{ props.value || '-' }}
             </q-td>
           </template>
           
           <template v-slot:body-cell-aksi="props">
-            <q-td :props="props" class="tw-py-2 sticky-column-left">
-              <div class="tw-flex tw-gap-1">
-                <q-btn
-                  round
-                  dense
-                  color="blue-5"
-                  icon="edit"
-                  size="10px"
-                  @click="openEditDialog(props.row)"
-                  class="tw-shadow-sm hover:tw-shadow-md hover:tw-scale-105 tw-transition-all"
-                >
-                  <q-tooltip class="tw-bg-slate-800 tw-text-xs">Edit</q-tooltip>
-                </q-btn>
-                
-                <q-btn
-                  round
-                  dense
-                  :color="props.row.account_active === 'Active' ? 'red-5' : 'green-5'"
-                  :icon="props.row.account_active === 'Active' ? 'block' : 'check_circle'"
-                  size="10px"
-                  @click="toggleActivation(props.row)"
-                  class="tw-shadow-sm hover:tw-shadow-md hover:tw-scale-105 tw-transition-all"
-                >
-                  <q-tooltip class="tw-bg-slate-800 tw-text-xs">
-                    {{ props.row.account_active === 'Active' ? 'Deactivate' : 'Activate' }}
-                  </q-tooltip>
-                </q-btn>
-                
-                <q-btn
-                  round
-                  dense
-                  color="purple-5"
-                  icon="admin_panel_settings"
-                  size="10px"
-                  @click="openGroupDialog(props.row)"
-                  class="tw-shadow-sm hover:tw-shadow-md hover:tw-scale-105 tw-transition-all"
-                >
-                  <q-tooltip class="tw-bg-slate-800 tw-text-xs">Setup Group</q-tooltip>
-                </q-btn>
-              </div>
+            <q-td :props="props" class="tw-py-2 tw-text-center">
+              <q-btn
+                unelevated
+                dense
+                color="red-6"
+                label="Delete"
+                size="sm"
+                @click="deleteUserConfirm(props.row)"
+                class="tw-px-4 tw-font-semibold tw-text-xs tw-rounded hover:tw-brightness-110 tw-transition-all"
+              />
             </q-td>
           </template>
         </q-table>
@@ -449,13 +409,19 @@ const roleLabelHtml = computed(() => 'Role <span style="color: #dc2626;">*</span
 
 const columns = [
   {
-    name: "aksi",
+    name: "bu_name",
     required: true,
-    label: "Action",
+    label: "Business Unit",
     align: "left",
-    field: "aksi",
-    classes: 'sticky-column-left',
-    headerClasses: 'sticky-column-left-header'
+    field: "bu_name",
+    sortable: true,
+  },
+  {
+    name: "account_name",
+    align: "left",
+    label: "Nama",
+    field: "account_name",
+    sortable: true,
   },
   {
     name: "account_nik",
@@ -466,10 +432,17 @@ const columns = [
     sortable: true,
   },
   {
-    name: "account_name",
+    name: "div_name",
+    label: "Divisi",
     align: "left",
-    label: "Name",
-    field: "account_name",
+    field: "div_name",
+    sortable: true,
+  },
+  {
+    name: "role_name",
+    label: "Role",
+    align: "left",
+    field: "role_name",
     sortable: true,
   },
   {
@@ -480,10 +453,11 @@ const columns = [
     sortable: true,
   },
   {
-    name: "account_active",
-    label: "Status",
-    align: "left",
-    field: "account_active",
+    name: "aksi",
+    required: true,
+    label: "Delete",
+    align: "center",
+    field: "aksi",
   },
 ];
 
@@ -816,6 +790,52 @@ const resetForm = () => {
   form.nama_div = null;
   form.nama_dept = null;
   form.jabatan = null;
+};
+
+const deleteUserConfirm = async (row) => {
+  $q.dialog({
+    title: "Confirm Delete",
+    message: `Are you sure you want to delete user <strong>${row.account_name}</strong> (NIK: ${row.account_nik})?<br><br>This action cannot be undone.`,
+    html: true,
+    class: `side-${domain()} tw-rounded-2xl`,
+    ok: {
+      push: true,
+      color: "red-7",
+      label: "Delete",
+      icon: "delete",
+      class: "tw-font-semibold tw-px-6 tw-rounded-lg"
+    },
+    cancel: {
+      push: true,
+      color: 'grey-7',
+      label: "Cancel",
+      icon: "cancel",
+      class: "tw-font-semibold tw-px-6 tw-rounded-lg"
+    },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      spinnerBall();
+      // emp_id from API response is plain text, encrypt it for backend
+      // DO NOT use row.emp_id directly - it needs encryption
+      const encryptedEmpid = encrypt(row.emp_id);
+      const empid = localStorage.getItem('empid');
+      
+      await axios.post(`${import.meta.env.VITE_API}deleteusers`, {
+        // empid: encryptedEmpid,
+        empid: row.emp_id,
+        creator: empid, // already encrypted from localStorage
+      });
+      success('User deleted successfully');
+      onRequest({
+        pagination: pagination.value,
+      });
+      $q.loading.hide();
+    } catch (err) {
+      $q.loading.hide();
+      error(err?.response?.data?.message || 'Failed to delete user');
+    }
+  });
 };
 
 const onRequest = (props) => {

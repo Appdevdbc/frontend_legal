@@ -59,6 +59,10 @@ export default [
         path: "spk/mold",
         component: () => import("./../pages/Report/SpkMold.vue"),
       },
+      {
+        path: "temuan",
+        component: () => import("./../pages/Report/Temuan.vue"),
+      },
     ],
     beforeEnter: (to, from, next) => {
       if (!window.localStorage.getItem("token")) {

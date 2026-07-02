@@ -1,25 +1,25 @@
 <template>
-  <q-page class="welcome-screen">
+  <q-page class="welcome-screen" :style="backgroundStyle">
     <div class="animated-bg">
-      <div class="gradient-orb orb-1"></div>
-      <div class="gradient-orb orb-2"></div>
-      <div class="gradient-orb orb-3"></div>
+      <div class="gradient-orb orb-1" :style="orb1Style"></div>
+      <div class="gradient-orb orb-2" :style="orb2Style"></div>
+      <div class="gradient-orb orb-3" :style="orb3Style"></div>
     </div>
 
     <div class="content-container">
       <div class="welcome-card">
         <div class="icon-container">
-          <div class="icon-glow"></div>
-          <div class="icon-wrapper">
-            <q-icon name="business_center" class="main-icon" />
+          <div class="icon-glow" :style="iconGlowStyle"></div>
+          <div class="icon-wrapper" :style="iconWrapperStyle">
+            <q-icon name="business_center" class="main-icon" :style="mainIconStyle" />
           </div>
           <div class="floating-particles">
-            <span class="particle" v-for="i in 6" :key="i"></span>
+            <span class="particle" v-for="i in 6" :key="i" :style="particleStyle"></span>
           </div>
         </div>
         
         <div class="text-content">
-          <h1 class="main-title">Legal Monitoring System</h1>
+          <h1 class="main-title" :style="titleStyle">Legal Monitoring System</h1>
           <p class="subtitle">Selamat Datang<br/>Legal Monitoring System DBC</p>
         </div>
       </div>
@@ -28,6 +28,131 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { domain } from './../utils';
+
+const currentDomain = computed(() => domain());
+
+// Domain color configurations
+const domainColors = {
+  'WDJR': {
+    primary: '#003399',
+    secondary: '#00b2e3',
+    bgLight: '#e0f2fe',
+    bgMedium: '#bfdbfe',
+    bgDark: '#93c5fd'
+  },
+  'WTUR': {
+    primary: '#003399',
+    secondary: '#00b2e3',
+    bgLight: '#e0f2fe',
+    bgMedium: '#bfdbfe',
+    bgDark: '#93c5fd'
+  },
+  'DJM': {
+    primary: '#003b7b',
+    secondary: '#231f20',
+    bgLight: '#e0f2fe',
+    bgMedium: '#bfdbfe',
+    bgDark: '#93c5fd'
+  },
+  'DTU': {
+    primary: '#003b7b',
+    secondary: '#231f20',
+    bgLight: '#e0f2fe',
+    bgMedium: '#bfdbfe',
+    bgDark: '#93c5fd'
+  },
+  'GBC': {
+    primary: '#ee4034',
+    secondary: '#BABCBE',
+    bgLight: '#fef2f2',
+    bgMedium: '#fecaca',
+    bgDark: '#fca5a5'
+  },
+  'WNR': {
+    primary: '#ee4034',
+    secondary: '#BABCBE',
+    bgLight: '#fef2f2',
+    bgMedium: '#fecaca',
+    bgDark: '#fca5a5'
+  },
+  'DBO': {
+    primary: '#ee4034',
+    secondary: '#BABCBE',
+    bgLight: '#fef2f2',
+    bgMedium: '#fecaca',
+    bgDark: '#fca5a5'
+  },
+  'DFR': {
+    primary: '#ef4123',
+    secondary: '#4d5e6c',
+    bgLight: '#fff7ed',
+    bgMedium: '#fed7aa',
+    bgDark: '#fdba74'
+  },
+  'RBG': {
+    primary: '#A8479A',
+    secondary: '#5BAF42',
+    bgLight: '#faf5ff',
+    bgMedium: '#e9d5ff',
+    bgDark: '#d8b4fe'
+  },
+  'RBS': {
+    primary: '#A8479A',
+    secondary: '#5BAF42',
+    bgLight: '#faf5ff',
+    bgMedium: '#e9d5ff',
+    bgDark: '#d8b4fe'
+  }
+};
+
+const getColorConfig = computed(() => {
+  return domainColors[currentDomain.value] || domainColors['DFR'];
+});
+
+// Dynamic styles based on domain
+const backgroundStyle = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.bgLight} 0%, ${getColorConfig.value.bgMedium} 50%, ${getColorConfig.value.bgLight} 100%)`
+}));
+
+const orb1Style = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.primary}40, ${getColorConfig.value.secondary}40)`
+}));
+
+const orb2Style = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.secondary}40, ${getColorConfig.value.primary}40)`
+}));
+
+const orb3Style = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.primary}30, ${getColorConfig.value.secondary}30)`
+}));
+
+const iconGlowStyle = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.primary}, ${getColorConfig.value.secondary})`
+}));
+
+const iconWrapperStyle = computed(() => ({
+  border: `2px solid ${getColorConfig.value.primary}20`,
+  boxShadow: `0 20px 60px ${getColorConfig.value.primary}25`
+}));
+
+const mainIconStyle = computed(() => ({
+  color: getColorConfig.value.primary,
+  filter: `drop-shadow(0 4px 12px ${getColorConfig.value.primary}40)`
+}));
+
+const particleStyle = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.primary}, ${getColorConfig.value.secondary})`
+}));
+
+const titleStyle = computed(() => ({
+  background: `linear-gradient(135deg, ${getColorConfig.value.primary}, ${getColorConfig.value.secondary})`,
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+  filter: `drop-shadow(0 2px 8px ${getColorConfig.value.primary}25)`
+}));
 </script>
 <style scoped>
 .welcome-screen {
@@ -36,8 +161,8 @@
   align-items: center;
   justify-content: center;
   min-height: 100%;
-  background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 50%, #fefce8 100%);
   overflow: hidden;
+  /* Background will be set dynamically via inline style */
 }
 
 .animated-bg {
@@ -53,12 +178,12 @@
   filter: blur(80px);
   opacity: 0.2;
   animation: float-orb 20s ease-in-out infinite;
+  /* Background will be set dynamically via inline style */
 }
 
 .orb-1 {
   width: 400px;
   height: 400px;
-  background: linear-gradient(135deg, #fecaca, #fca5a5);
   top: -20%;
   left: -10%;
 }
@@ -66,7 +191,6 @@
 .orb-2 {
   width: 350px;
   height: 350px;
-  background: linear-gradient(135deg, #bfdbfe, #93c5fd);
   bottom: -20%;
   right: -10%;
   animation-delay: 7s;
@@ -75,7 +199,6 @@
 .orb-3 {
   width: 300px;
   height: 300px;
-  background: linear-gradient(135deg, #a7f3d0, #6ee7b7);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -121,10 +244,10 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, #dc2626, #ef4444);
   opacity: 0.15;
   filter: blur(40px);
   animation: pulse-glow 3s ease-in-out infinite;
+  /* Background will be set dynamically via inline style */
 }
 
 @keyframes pulse-glow {
@@ -135,15 +258,14 @@
 .icon-wrapper {
   position: relative;
   background: white;
-  border: 2px solid rgba(220, 38, 38, 0.1);
   border-radius: 50%;
   width: 140px;
   height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 20px 60px rgba(220, 38, 38, 0.15);
   animation: float-icon 4s ease-in-out infinite;
+  /* Border and box-shadow will be set dynamically via inline style */
 }
 
 @keyframes float-icon {
@@ -153,8 +275,7 @@
 
 .main-icon {
   font-size: 4.5rem;
-  color: #dc2626;
-  filter: drop-shadow(0 4px 12px rgba(220, 38, 38, 0.2));
+  /* Color and filter will be set dynamically via inline style */
 }
 
 .floating-particles {
@@ -167,10 +288,10 @@
   position: absolute;
   width: 6px;
   height: 6px;
-  background: linear-gradient(135deg, #dc2626, #ef4444);
   border-radius: 50%;
   opacity: 0.4;
   animation: float-particle 3s ease-in-out infinite;
+  /* Background will be set dynamically via inline style */
 }
 
 .particle:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
@@ -195,17 +316,13 @@
   font-weight: 900;
   line-height: 1.2;
   margin: 0 0 1rem 0;
-  background: linear-gradient(135deg, #dc2626, #ef4444);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 2px 8px rgba(220, 38, 38, 0.15));
   animation: title-glow 2s ease-in-out infinite;
+  /* Background, clip, and filter will be set dynamically via inline style */
 }
 
 @keyframes title-glow {
-  0%, 100% { filter: drop-shadow(0 2px 8px rgba(220, 38, 38, 0.15)); }
-  50% { filter: drop-shadow(0 4px 12px rgba(220, 38, 38, 0.25)); }
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
 }
 
 .subtitle {

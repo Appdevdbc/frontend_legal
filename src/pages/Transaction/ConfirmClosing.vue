@@ -395,7 +395,7 @@
                         {{ item.listdet_duedate ? formatDate(item.listdet_duedate) : '-' }}
                       </td>
                       <td class="text-center">
-                        <a v-if="item.listdet_file" :href="getFileUrl(item.listdet_file)" target="_blank" class="tw-text-blue-600 hover:tw-underline tw-text-xs">
+                        <a v-if="item.listdet_attach" :href="getFileUrl(item.listdet_attach)" target="_blank" class="tw-text-blue-600 hover:tw-underline tw-text-xs">
                           <q-icon name="attach_file" size="14px" class="tw-mr-1" />
                           View File
                         </a>
@@ -408,17 +408,16 @@
                         />
                       </td>
                       <td class="text-center">
+                        <!-- Always show feedback button regardless of status -->
                         <q-btn
-                          v-if="item.listdet_status === '0'"
                           unelevated
                           dense
                           size="sm"
-                          color="primary"
+                          color="teal"
                           label="Feedback"
                           @click="giveFeedback(item.listdet_id)"
                           class="tw-text-xs"
                         />
-                        <span v-else class="tw-text-gray-400">-</span>
                       </td>
                     </template>
                     <template v-else>
@@ -426,6 +425,9 @@
                       <td class="text-center">
                         <div v-if="item.listdet_status === '1'" class="tw-bg-green-500 tw-text-white tw-py-1 tw-px-3 tw-rounded tw-text-sm tw-font-semibold">
                           100%
+                        </div>
+                        <div v-else-if="item.listdet_progress && parseInt(item.listdet_progress) > 0" class="tw-bg-orange-500 tw-text-white tw-py-1 tw-px-3 tw-rounded tw-text-sm tw-font-semibold">
+                          {{ parseInt(item.listdet_progress) }}%
                         </div>
                         <div v-else class="tw-bg-red-500 tw-text-white tw-py-1 tw-px-3 tw-rounded tw-text-sm tw-font-semibold tw-flex tw-items-center tw-justify-center tw-gap-1">
                           <q-icon name="close" size="16px" />
@@ -509,8 +511,8 @@
                 <div class="tw-flex tw-gap-2">
                   <span class="tw-text-sm tw-text-gray-600 tw-w-28 tw-flex-shrink-0">Attachment</span>
                   <div class="tw-flex tw-flex-col tw-gap-1">
-                    <a v-if="feedbackData.detail_info?.listdet_file" :href="getFileUrl(feedbackData.detail_info.listdet_file)" target="_blank" class="tw-text-blue-600 hover:tw-underline tw-text-sm">
-                      {{ feedbackData.detail_info.listdet_file }}
+                    <a v-if="feedbackData.detail_info?.listdet_attach" :href="getFileUrl(feedbackData.detail_info.listdet_attach)" target="_blank" class="tw-text-blue-600 hover:tw-underline tw-text-sm">
+                      {{ feedbackData.detail_info.listdet_attach }}
                     </a>
                     <span v-else class="tw-text-gray-400 tw-text-sm">-</span>
                   </div>
@@ -519,7 +521,7 @@
             </q-card-section>
           </q-card>
           
-          <!-- Feedback Form -->
+          <!-- Feedback Form - Show for both Open and Completed status -->
           <q-card flat bordered class="tw-mb-4 tw-bg-white">
             <q-card-section class="tw-p-4">
               <div class="tw-mb-4">
@@ -531,10 +533,12 @@
                   placeholder="Enter your feedback here..."
                   rows="5"
                   class="tw-w-full"
+                  :readonly="feedbackData.detail_info?.listdet_status === '1'"
                 />
               </div>
               
-              <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-4 tw-mb-4">
+              <!-- Only show file upload and progress for Open items -->
+              <div v-if="feedbackData.detail_info?.listdet_status === '0'" class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-4 tw-mb-4">
                 <div>
                   <q-file
                     v-model="feedbackForm.files"
@@ -565,7 +569,8 @@
                 </div>
               </div>
               
-              <div class="tw-flex tw-justify-end tw-gap-3">
+              <!-- Show buttons only for Open status -->
+              <div v-if="feedbackData.detail_info?.listdet_status === '0'" class="tw-flex tw-justify-end tw-gap-3">
                 <q-btn
                   unelevated
                   label="CONFIRM CLOSING"
@@ -582,6 +587,12 @@
                   class="tw-px-10 tw-text-white"
                   style="background-color: #EE3020"
                 />
+              </div>
+              
+              <!-- Message for Completed items -->
+              <div v-else class="tw-text-center tw-py-2">
+                <q-badge color="positive" label="This item has been completed" />
+                <p class="tw-text-sm tw-text-gray-500 tw-mt-2">You can still view feedback history below</p>
               </div>
             </q-card-section>
           </q-card>
@@ -1100,21 +1111,397 @@ const editRequest = (temuanId) => {
   router.push({ name: 'InputRequest', query: { temuan_id: encryptedId } });
 };
 
-const printRequest = (temuanId) => {
-  // Open print preview or generate PDF
-  $q.notify({
-    type: 'info',
-    message: 'Print feature - To be implemented',
-    position: 'top'
+const printRequest = async (temuanId) => {
+  try {
+    $q.loading.show({
+      message: 'Preparing print document...'
+    });
+    
+    // Load request detail data with feedback history
+    const encryptedTemuanId = encryptMessage(temuanId);
+    const response = await axios.get(`${import.meta.env.VITE_API}transaction/getRequestProgress/${encryptedTemuanId}`);
+    
+    // Load all feedback history for this request (includes division head name)
+    const feedbackResponse = await axios.get(`${import.meta.env.VITE_API}transaction/getAllFeedbackByRequest/${encryptedTemuanId}`);
+    
+    // Find the request in current list for basic info
+    const currentRequest = requests.value.find(r => r.temuan_id === temuanId);
+    
+    if (!currentRequest) {
+      $q.loading.hide();
+      $q.notify({
+        type: 'warning',
+        message: 'Request data not found',
+        position: 'top'
+      });
+      return;
+    }
+    
+    // Merge feedback data
+    const printData = {
+      ...response.data,
+      all_feedback: feedbackResponse.data.feedback || feedbackResponse.data || [],
+      division_head_name: feedbackResponse.data.division_head_name || 'LIE POH AN'
+    };
+    
+    // Generate print HTML
+    const printContent = generatePrintHTML(currentRequest, printData);
+    
+    $q.loading.hide();
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Trigger print dialog after content loads
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+    
+  } catch (error) {
+    $q.loading.hide();
+    console.error('Error preparing print:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to prepare print document',
+      position: 'top'
+    });
+  }
+};
+
+const generatePrintHTML = (request, progressData) => {
+  const reportDate = dayjs().format('DD-MM-YYYY');
+  const reportNumber = request.temuan_id || '-';
+  
+  // Group items by list_order (points)
+  const groups = {};
+  if (progressData.items) {
+    progressData.items.forEach(item => {
+      if (!groups[item.list_order]) {
+        groups[item.list_order] = {
+          list_order: item.list_order,
+          list_judul: item.list_judul,
+          details: []
+        };
+      }
+      groups[item.list_order].details.push(item);
+    });
+  }
+  
+  const groupedItems = Object.values(groups);
+  
+  // Generate table rows
+  let tableRows = '';
+  groupedItems.forEach((point, idx) => {
+    const pointNumber = idx + 1;
+    
+    // Combine all details and feedback for this point
+    let combinedFeedback = '';
+    
+    point.details.forEach((detail) => {
+      // Add detail description
+      combinedFeedback += `<div style="margin-bottom: 10px; padding: 5px; background: #f9f9f9; border-left: 3px solid #2e5cb8;">
+        <strong style="color: #2e5cb8; font-size: 10px;">${detail.listdet_order}. ${detail.listdet_isi}</strong>
+      </div>`;
+      
+      // Get feedback for this specific detail
+      if (progressData.all_feedback && progressData.all_feedback.length > 0) {
+        const detailFeedback = progressData.all_feedback.filter(f => f.feedback_listdetid === detail.listdet_id);
+        
+        if (detailFeedback.length > 0) {
+          detailFeedback.forEach(feedback => {
+            combinedFeedback += `
+              <div style="margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #ddd;">
+                <div style="font-size: 9px; color: #666; margin-bottom: 3px;">
+                  <strong>${feedback.employee_name || 'Unknown'}</strong> - Posted On ${dayjs(feedback.feedback_date).format('DD MMM YYYY HH:mm:ss')}
+                </div>
+                <div style="font-size: 10px; color: #333; margin-bottom: 3px;">
+                  ${feedback.feedback_isi || ''}
+                </div>
+                ${feedback.feedback_attach ? `
+                  <div style="font-size: 9px; color: #0066cc;">
+                    📎 Attachment: ${feedback.feedback_attach}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          });
+        }
+      }
+      
+      // Add correspondence
+      if (detail.listdet_emailnotif) {
+        combinedFeedback += `<div style="font-size: 9px; color: #666; margin-top: 8px; font-style: italic;">
+          Correspondence: ${detail.listdet_emailnotif}
+        </div>`;
+      }
+    });
+    
+    // Get status from first detail (all should be same for the point)
+    const firstDetail = point.details[0];
+    const statusText = firstDetail.listdet_status === '1' ? 'Closed' : 'Open';
+    const dueDateText = dayjs(firstDetail.listdet_duedate).format('DD MMM YYYY');
+    
+    tableRows += `
+      <tr style="border: 1px solid #000;">
+        <td style="border: 1px solid #000; padding: 5px; text-align: center; vertical-align: top; font-weight: bold; width: 35px; font-size: 10px;">
+          ${pointNumber}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; vertical-align: top; width: 160px; font-size: 10px;">
+          <strong>${point.list_judul}</strong>
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; vertical-align: top; font-size: 10px;">
+          ${combinedFeedback || '<span style="color: #999;">No feedback yet</span>'}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; text-align: center; vertical-align: top; font-size: 10px; width: 100px;">
+          <div style="margin-bottom: 6px;">
+            <strong>Due Date:</strong><br>${dueDateText}
+          </div>
+          <div>
+            <strong>Status:</strong><br>
+            <span style="color: ${statusText === 'Closed' ? '#059669' : '#dc2626'}; font-weight: bold;">
+              ${statusText}
+            </span>
+          </div>
+        </td>
+      </tr>
+    `;
   });
-  // TODO: Implement print functionality
-  // window.open(`/api/transaction/printRequest/${temuanId}`, '_blank');
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Print Request - ${request.temuan_id}</title>
+      <style>
+        @media print {
+          @page {
+            size: A4;
+            margin: 10mm 12mm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+        
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 11px;
+          line-height: 1.3;
+          color: #000;
+          padding: 15px;
+          background: #fff;
+        }
+        
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 12px;
+        }
+        
+        .logo {
+          max-width: 120px;
+        }
+        
+        .logo img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+        }
+        
+        .report-info {
+          text-align: right;
+          border: 2px solid #000;
+          padding: 6px 10px;
+          background: #f9f9f9;
+        }
+        
+        .report-info div {
+          margin: 2px 0;
+          font-size: 10px;
+        }
+        
+        .company-info {
+          margin-bottom: 12px;
+        }
+        
+        .company-info table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        
+        .company-info td {
+          padding: 3px 6px;
+          vertical-align: top;
+          font-size: 10px;
+        }
+        
+        .company-info td:first-child {
+          width: 140px;
+          font-weight: normal;
+        }
+        
+        .company-info td:nth-child(2) {
+          width: 8px;
+        }
+        
+        .main-table {
+          width: 100%;
+          border-collapse: collapse;
+          border: 2px solid #000;
+          margin-bottom: 15px;
+        }
+        
+        .main-table th {
+          background-color: #e0e0e0;
+          border: 1px solid #000;
+          padding: 6px 5px;
+          text-align: center;
+          font-weight: bold;
+          font-size: 10px;
+        }
+        
+        .main-table td {
+          border: 1px solid #000;
+          padding: 5px;
+          vertical-align: top;
+          font-size: 10px;
+        }
+        
+        .signature-section {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          page-break-inside: avoid;
+        }
+        
+        .signature-box {
+          width: 45%;
+          text-align: center;
+        }
+        
+        .signature-box div {
+          margin: 3px 0;
+          font-size: 10px;
+        }
+        
+        .signature-name {
+          margin-top: 40px;
+          font-weight: bold;
+          font-size: 10px;
+        }
+        
+        .print-button {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          padding: 10px 20px;
+          background: #2e5cb8;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          z-index: 1000;
+        }
+        
+        .print-button:hover {
+          background: #1e4a8a;
+        }
+      </style>
+    </head>
+    <body>
+      <button class="print-button no-print" onclick="window.print()">🖨️ Print</button>
+      
+      <!-- Header -->
+      <div class="header">
+        <div class="logo">
+          <img src="/logo.png" alt="DBC Logo" style="max-width: 150px; height: auto;" />
+        </div>
+        <div class="report-info">
+          <div><strong>Report Number</strong> : ${reportNumber}</div>
+          <div><strong>Report Date</strong> : ${reportDate}</div>
+        </div>
+      </div>
+      
+      <!-- Company Info -->
+      <div class="company-info">
+        <table>
+          <tr>
+            <td>Nama Perusahaan</td>
+            <td>:</td>
+            <td><strong>${request.bu_name || '-'}</strong></td>
+          </tr>
+          <tr>
+            <td>Divisi/Department</td>
+            <td>:</td>
+            <td><strong>${request.div_nama || '-'}</strong></td>
+          </tr>
+          <tr>
+            <td>Requestee</td>
+            <td>:</td>
+            <td><strong>${request.requestee_names || '-'}</strong></td>
+          </tr>
+          <tr>
+            <td>Pemeriksaan</td>
+            <td>:</td>
+            <td><strong>${request.temuan_judul || '-'}</strong></td>
+          </tr>
+          <tr>
+            <td>Periode</td>
+            <td>:</td>
+            <td><strong>${dayjs(request.temuan_tglawal).format('DD MMM YYYY')} s/d ${dayjs(request.temuan_tglakhir).format('DD MMM YYYY')}</strong></td>
+          </tr>
+        </table>
+      </div>
+      
+      <!-- Main Table -->
+      <table class="main-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">No</th>
+            <th style="width: 180px;">Permintaan/Temuan<br>Permasalahan Hukum</th>
+            <th>Pembahasan dan Penyelesaian</th>
+            <th style="width: 120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      
+      <!-- Signature Section -->
+      <div class="signature-section">
+        <div class="signature-box">
+          <div><strong>Requestee</strong></div>
+          <div>Division Head</div>
+          <div>&nbsp;</div>
+          <div class="signature-name">(${progressData.division_head_name ? progressData.division_head_name.toUpperCase() : 'LIE POH AN'})</div>
+        </div>
+        <div class="signature-box">
+          <div><strong>Requestor</strong></div>
+          <div>Corporate Legal Division</div>
+          <div>&nbsp;</div>
+          <div class="signature-name">(NINONG SW)</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 };
 
 const getFileUrl = (filename) => {
   if (!filename) return '';
   // Construct file download URL - adjust base URL as needed
-  return `${import.meta.env.VITE_API}files/download/${filename}`;
+  return `${import.meta.env.VITE_FTP}${import.meta.env.VITE_FTP_DIR}${filename}`;
 };
 
 const giveFeedback = async (listdetId) => {
@@ -1174,6 +1561,8 @@ const submitFeedback = async () => {
   savingFeedback.value = true;
   
   try {
+    const empid = authStore.userEmpId || localStorage.getItem('empid') || '';
+
     const formData = new FormData();
     formData.append('listdet_id', currentListdetId.value);
     formData.append('message', feedbackForm.message);
@@ -1181,6 +1570,7 @@ const submitFeedback = async () => {
     formData.append('temuan_id', feedbackData.value.detail_info?.temuan_id);
     formData.append('bu_id', feedbackData.value.detail_info?.temuan_bu);
     formData.append('div_id', feedbackData.value.detail_info?.temuan_div);
+    formData.append('user', empid);
     
     // Add files
     if (feedbackForm.files && feedbackForm.files.length > 0) {
@@ -1241,12 +1631,16 @@ const confirmClosingItem = async () => {
     savingFeedback.value = true;
     
     try {
+      const empid = authStore.userEmpId || localStorage.getItem('empid') || '';
+
       const formData = new FormData();
       formData.append('listdet_id', currentListdetId.value);
       formData.append('message', feedbackForm.message);
       formData.append('temuan_id', feedbackData.value.detail_info?.temuan_id);
       formData.append('bu_id', feedbackData.value.detail_info?.temuan_bu);
       formData.append('div_id', feedbackData.value.detail_info?.temuan_div);
+      formData.append('div_id', feedbackData.value.detail_info?.temuan_div);
+      formData.append('user', empid);
       
       // Add files
       if (feedbackForm.files && feedbackForm.files.length > 0) {

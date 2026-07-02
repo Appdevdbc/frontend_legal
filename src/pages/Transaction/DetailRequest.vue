@@ -141,11 +141,11 @@
                       </td>
                       <td class="tw-border tw-border-slate-300 tw-p-3">
                         <q-linear-progress
-                          :value="parseInt(line.listdet_progress) / 100"
+                          :value="40"
                           color="teal-6"
                           class="tw-mb-1"
                         />
-                        <span class="tw-text-xs">{{ line.listdet_progress }}%</span>
+                        <span class="tw-text-xs">{{ 40 }}%</span>
                       </td>
                       <td class="tw-border tw-border-slate-300 tw-p-3 tw-text-center">
                         <q-badge
