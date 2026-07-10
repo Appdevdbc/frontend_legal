@@ -563,9 +563,7 @@
                     dense
                     min="0"
                     max="99"
-                    @keyup="validateProgress"
                     class="tw-w-20"
-                    :rules="[val => val >= 0 && val <= 99 || 'Progress must be 0-99']"
                   />
                   <span class="tw-text-xs tw-text-gray-500 tw-whitespace-nowrap">% **maximum input: 99%</span>
                 </div>
@@ -689,6 +687,19 @@ const feedbackForm = reactive({
   message: '',
   progress: 0,
   files: []
+});
+
+// Watch for progress changes and validate
+watch(() => feedbackForm.progress, (newValue) => {
+  // Convert to number to ensure proper comparison
+  const numValue = Number(newValue);
+  
+  // Clamp between 0 and 99
+  if (numValue < 0) {
+    feedbackForm.progress = 0;
+  } else if (numValue > 99) {
+    feedbackForm.progress = 99;
+  }
 });
 
 // Table columns
@@ -1611,14 +1622,6 @@ const submitFeedback = async () => {
     });
   } finally {
     savingFeedback.value = false;
-  }
-};
-
-const validateProgress = (value) => {
-  if (value < 0) {
-    feedbackForm.progress = 0;
-  } else if (value > 99) {
-    feedbackForm.progress = 99;
   }
 };
 
