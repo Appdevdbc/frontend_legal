@@ -109,7 +109,7 @@ const columns = [
     name: "bu_id",
     required: true,
     label: "Business Code",
-    align: "left",
+    align: "center",
     field: "bu_id",
     sortable: true,
   },
@@ -122,10 +122,10 @@ const columns = [
     sortable: true,
   },
   {
-    name: "bu_prefix",
-    label: "Business Prefix",
-    align: "left",
-    field: "bu_prefix",
+    name: "bu_status",
+    label: "Business Status",
+    align: "center",
+    field: "bu_status",
     sortable: true,
   },
 ];
@@ -205,7 +205,7 @@ const getPageAkses = async () => {
     const res = await axios.get(`${import.meta.env.VITE_API}pageakses`, {
       params: {
         role:empid(),
-        page:'/domain',
+        page:'/master/domain',
         domain:domain(),
       },
       skipErrorInterceptor: true

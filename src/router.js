@@ -16,10 +16,10 @@ const router = createRouter({
           path: "user",
           component: () => import("./pages/User.vue"),
         },
-        {
-          path: "domain",
-          component: () => import("./pages/Domain.vue"),
-        },
+        // {
+        //   path: "domain",
+        //   component: () => import("./pages/Domain.vue"),
+        // },
         {
           path: "site",
           component: () => import("./pages/Site.vue"),
