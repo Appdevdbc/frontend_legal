@@ -100,15 +100,26 @@
           
           <template v-slot:body-cell-aksi="props">
             <q-td :props="props" class="tw-py-2 tw-text-center">
-              <q-btn
-                unelevated
-                dense
-                color="red-6"
-                label="Delete"
-                size="sm"
-                @click="deleteUserConfirm(props.row)"
-                class="tw-px-4 tw-font-semibold tw-text-xs tw-rounded hover:tw-brightness-110 tw-transition-all"
-              />
+              <div class="tw-flex tw-gap-2 tw-justify-center">
+                <q-btn
+                  unelevated
+                  dense
+                  color="blue-6"
+                  label="Edit"
+                  size="sm"
+                  @click="openEditDialog(props.row)"
+                  class="tw-px-4 tw-font-semibold tw-text-xs tw-rounded hover:tw-brightness-110 tw-transition-all"
+                />
+                <q-btn
+                  unelevated
+                  dense
+                  color="red-6"
+                  label="Delete"
+                  size="sm"
+                  @click="deleteUserConfirm(props.row)"
+                  class="tw-px-4 tw-font-semibold tw-text-xs tw-rounded hover:tw-brightness-110 tw-transition-all"
+                />
+              </div>
             </q-td>
           </template>
         </q-table>
@@ -230,8 +241,6 @@
                 :options="filteredRoles"
                 option-value="role_id"
                 option-label="role_name"
-                emit-value
-                map-options
                 outlined
                 label="Role"
                 dense
@@ -396,7 +405,7 @@
 <script setup>
 import { ref, onMounted, reactive, computed } from "vue";
 import axios from "axios";
-import { domain, empid, spinnerBall, encrypt } from "./../../utils";
+import { domain, empid, spinnerBall, encrypt, decryptMessage } from "./../../utils";
 import { useQuasar } from "quasar";
 import { useNotify } from "./../../composables/useNotify";
 import "./../../assets/styles/table.css";
@@ -455,7 +464,7 @@ const columns = [
   {
     name: "aksi",
     required: true,
-    label: "Delete",
+    label: "Action",
     align: "center",
     field: "aksi",
   },
@@ -570,10 +579,10 @@ const getHrisByNIK = async () => {
     const res = await axios.get(`${import.meta.env.VITE_API}getHrisByNIK`, {
       params: { nik: form.nik }
     });
-    
+
     form.first_name = res.data.name;
     form.email = res.data.email;
-    form.emp_id = res.data.empid;
+    form.emp_id = decryptMessage(res.data.empid);
     form.bu_name = res.data.bu_name;
     form.nama_div = res.data.nama_div;
     form.nama_dept = res.data.nama_dept;
@@ -600,7 +609,28 @@ const openEditDialog = async (row) => {
   form.email = row.account_email;
   form.emp_id = row.emp_id;
   form.activated = row.account_active === 'Active';
-  form.role_id = row.account_type;
+  
+  // Store account_type (this is the role_id from backend)
+  const accountType = row.account_type;
+  
+  // Load roles first and wait for it to complete
+  await getRoles();
+  
+  // Convert to number to ensure type matching
+  const accountTypeNum = Number(accountType);
+  
+  // Find the role object to get the role name for display
+  const selectedRole = listRoles.value.find(r => Number(r.role_id) === accountTypeNum);
+  
+  console.log('DEBUG - Edit Dialog:');
+  console.log('Account Type (from row):', accountType, 'Type:', typeof accountType);
+  console.log('Account Type Num:', accountTypeNum);
+  console.log('listRoles count:', listRoles.value.length);
+  console.log('Available Roles:', listRoles.value.map(r => ({ role_id: r.role_id, role_name: r.role_name })));
+  console.log('Selected Role:', selectedRole);
+  
+  // Set role_id as the OBJECT (because q-select WITHOUT emit-value expects object)
+  form.role_id = selectedRole || null;
   
   // Fetch organizational data from HRIS
   try {
@@ -620,7 +650,6 @@ const openEditDialog = async (row) => {
     // Continue anyway, organizational fields will be empty
   }
   
-  await getRoles();
   dialogForm.value = true;
 };
 
@@ -630,6 +659,7 @@ const saveData = async () => {
     
     const payload = {
       ...form,
+      role_id: form.role_id?.role_id || form.role_id, // Extract role_id if object
       creator: empid(),
     };
     

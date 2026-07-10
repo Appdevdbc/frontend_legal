@@ -563,7 +563,9 @@
                     dense
                     min="0"
                     max="99"
+                    @keyup="validateProgress"
                     class="tw-w-20"
+                    :rules="[val => val >= 0 && val <= 99 || 'Progress must be 0-99']"
                   />
                   <span class="tw-text-xs tw-text-gray-500 tw-whitespace-nowrap">% **maximum input: 99%</span>
                 </div>
@@ -1609,6 +1611,14 @@ const submitFeedback = async () => {
     });
   } finally {
     savingFeedback.value = false;
+  }
+};
+
+const validateProgress = (value) => {
+  if (value < 0) {
+    feedbackForm.progress = 0;
+  } else if (value > 99) {
+    feedbackForm.progress = 99;
   }
 };
 
