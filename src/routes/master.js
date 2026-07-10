@@ -18,7 +18,7 @@ export default [
         component: () => import("./../pages/Master/GroupManagement.vue"),
       },
       {
-        path: "domain",
+        path: "/master/domain",
         component: () => import("./../pages/Master/Domain.vue"),
       },
       {

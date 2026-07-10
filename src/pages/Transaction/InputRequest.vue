@@ -65,6 +65,7 @@
                   dense
                   label="Requestee"
                   :rules="[val => val && val.length > 0 || 'Requestee is required']"
+                  lazy-rules
                   @update:model-value="onRequesteeChange"
                   class="tw-rounded"
                   use-chips
@@ -100,7 +101,11 @@
                     dense
                     type="date"
                     label="Periode Awal"
-                    :rules="[val => !!val || 'Periode awal is required']"
+                    :rules="[
+                      val => !!val || 'Periode awal is required',
+                      val => !form.periode_akhir || val <= form.periode_akhir || 'Periode awal tidak boleh lebih besar dari periode akhir'
+                    ]"
+                    lazy-rules
                     class="tw-flex-1 tw-rounded"
                   >
                     <template v-slot:prepend>
@@ -117,7 +122,11 @@
                     dense
                     type="date"
                     label="Periode Akhir"
-                    :rules="[val => !!val || 'Periode akhir is required']"
+                    :rules="[
+                      val => !!val || 'Periode akhir is required',
+                      val => !form.periode_awal || val >= form.periode_awal || 'Periode akhir tidak boleh lebih kecil dari periode awal'
+                    ]"
+                    lazy-rules
                     class="tw-flex-1 tw-rounded"
                   >
                     <template v-slot:label>
