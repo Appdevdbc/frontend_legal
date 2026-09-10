@@ -1,3 +1,5 @@
+import { isLoggedIn } from "./../session.js";
+
 export default [
   {
     path: "/spk",
@@ -14,7 +16,7 @@ export default [
       },
     ],
     beforeEnter: (to, from, next) => {
-      if (!window.localStorage.getItem("token")) {
+      if (!isLoggedIn()) {
         next({ path: "/login" });
       } else {
         next();

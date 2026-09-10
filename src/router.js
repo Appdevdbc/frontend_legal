@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import dmsRoutes from "./routes/wjs";
 import { authGuard, guestGuard } from "./router/guards";
+import { isLoggedIn } from "./session.js";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -36,7 +37,7 @@ const router = createRouter({
         /* Digitalisasi Laporan Projection (Akhir) */
       ],
       beforeEnter: (to, from, next) => {
-        if (!window.localStorage.getItem("token")) {
+        if (!isLoggedIn()) {
           next({
             path: "/login",
           });

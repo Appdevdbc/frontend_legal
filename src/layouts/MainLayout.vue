@@ -254,6 +254,7 @@ import { ref,computed,onMounted  } from "vue";
 import { useQuasar } from "quasar";
 import axios from "axios"
 import { empid, nama, nik, ParseError, domain,unit,idleTime, spinnerBall, role, decryptMessage } from "./../utils";
+import { clearSession, redirectToLogin } from "./../session.js";
 import { useRouter, useRoute } from "vue-router";
 import { useBrowserLocation,useTimeoutFn } from '@vueuse/core'
 import ProfileDrawer from './../components/ProfileDrawer.vue';
@@ -585,16 +586,10 @@ const logoutUser = async () => {
     });
     $q.loading.hide()
     if (typeof res.data!== "undefined") {
-      window.localStorage.clear();
+      // Cookie auth dihapus di backend; bersihkan session (preferensi UI tetap).
+      clearSession();
       window.sessionStorage.clear();
-      let environment = `${import.meta.env.VITE_ENV}`;
-      if (environment == 'LOCAL'){
-          router.push("/login");
-      }else{
-          window.location.replace(`${import.meta.env.VITE_APPDBC}`);
-      }
-      //router.push("https://app.dbc.co.id");
-      //router.push("/");
+      redirectToLogin();
     }
   } catch (error) {
     console.log(error);
@@ -619,16 +614,10 @@ const logoutSystem = async () => {
     });
     $q.loading.hide()
     if (typeof res.data!== "undefined") {
-      window.localStorage.clear();
+      // Cookie auth dihapus di backend; bersihkan session (preferensi UI tetap).
+      clearSession();
       window.sessionStorage.clear();
-      let environment = `${import.meta.env.VITE_ENV}`;
-      if (environment == 'LOCAL'){
-          router.push("/login");
-      }else{
-           window.location.replace(`${import.meta.env.VITE_APPDBC}`);
-      }
-      //router.push("https://app.dbc.co.id");
-      //router.push("/");
+      redirectToLogin();
     }
   } catch (error) {
     $q.loading.hide()
@@ -661,10 +650,7 @@ if (window.localStorage.getItem("dark")) {
   }
 }
 
-if (window.localStorage.getItem("token")) {
-  // api.defaults.headers.common["Authorization"] = window.localStorage.getItem("token");
-  axios.defaults.headers.common["Authorization"] = 'Bearer ' + window.localStorage.getItem("token");
-}
+// Auth via httpOnly cookie (withCredentials di main.js) — tidak perlu set header Authorization.
 
 //setListDomain();
 
