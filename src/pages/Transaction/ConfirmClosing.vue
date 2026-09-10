@@ -554,18 +554,41 @@
                     </template>
                   </q-file>
                 </div>
-                <div class="tw-flex tw-items-center tw-gap-2">
-                  <label class="tw-text-sm tw-font-semibold tw-text-gray-700 tw-whitespace-nowrap">Progress:</label>
-                  <q-input
-                    v-model.number="feedbackForm.progress"
-                    type="number"
-                    outlined
-                    dense
-                    min="0"
-                    max="99"
-                    class="tw-w-20"
-                  />
-                  <span class="tw-text-xs tw-text-gray-500 tw-whitespace-nowrap">% **maximum input: 99%</span>
+                <div>
+                  <div class="tw-flex tw-items-center tw-gap-2">
+                    <label class="tw-text-sm tw-font-semibold tw-text-gray-700 tw-whitespace-nowrap">Progress:</label>
+                    <q-input
+                      v-model.number="feedbackForm.progress"
+                      type="number"
+                      outlined
+                      dense
+                      min="0"
+                      max="100"
+                      class="tw-w-32"
+                      :error="feedbackForm.progress < 0 || feedbackForm.progress > 100"
+                    />
+                    <span class="tw-text-xs tw-text-gray-500 tw-whitespace-nowrap">%</span>
+                  </div>
+                  <div class="tw-mt-1 tw-text-xs tw-pl-20">
+                    <span 
+                      v-if="feedbackForm.progress < 0" 
+                      class="tw-text-red-600 tw-font-semibold"
+                    >
+                      ⚠️ Progress tidak boleh kurang dari 0%
+                    </span>
+                    <span 
+                      v-else-if="feedbackForm.progress > 100" 
+                      class="tw-text-red-600 tw-font-semibold"
+                    >
+                      ⚠️ Progress tidak boleh lebih dari 100%
+                    </span>
+                    <span 
+                      v-else 
+                      class="tw-text-gray-500"
+                    >
+                      Masukkan nilai progress antara 0-100%
+                    </span>
+                  </div>
                 </div>
               </div>
               
@@ -687,6 +710,19 @@ const feedbackForm = reactive({
   message: '',
   progress: 0,
   files: []
+});
+
+// Watch for progress changes and validate
+watch(() => feedbackForm.progress, (newValue) => {
+  // Convert to number to ensure proper comparison
+  const numValue = Number(newValue);
+ 
+  // Clamp between 0 and 100
+  // if (numValue < 0) {
+  //   feedbackForm.progress = 0;
+  // } else if (numValue > 100) {
+  //   feedbackForm.progress = 100;
+  // }
 });
 
 // Table columns
@@ -1549,10 +1585,10 @@ const submitFeedback = async () => {
     return;
   }
   
-  if (feedbackForm.progress < 0 || feedbackForm.progress > 99) {
+  if (feedbackForm.progress < 0 || feedbackForm.progress > 100) {
     $q.notify({
       type: 'warning',
-      message: 'Progress must be between 0-99%',
+      message: 'Progress must be between 0-100%',
       position: 'top'
     });
     return;

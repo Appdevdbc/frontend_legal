@@ -103,6 +103,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useQuasar } from "quasar";
 import { useBrowserLocation } from '@vueuse/core'
 import { ParseError } from "./../utils.js";
+import { setSession, clearSession } from "./../session.js";
 import { useNotify } from "./../composables/useNotify";
 
 const $q = useQuasar();
@@ -127,7 +128,8 @@ const initialValues = {
 const onSubmit = async (values, actions) => {
   try {
     const environment =`${import.meta.env.VITE_ENV}`;
-    window.localStorage.clear();
+    // Bersihkan sesi lama (tanpa menghapus preferensi UI) sebelum login baru.
+    clearSession();
      if (environment != 'LOCAL'){
         window.location.replace(`${import.meta.env.VITE_APPDBC}`);
     } 
@@ -136,29 +138,30 @@ const onSubmit = async (values, actions) => {
       skipErrorInterceptor: true
     });
     actions.resetForm();
-    let response = JSON.stringify(res.data);
-    
-    window.localStorage.setItem("data", JSON.stringify(res.data));
-    window.localStorage.setItem("token", res.data.data.token);
-    window.localStorage.setItem("empid", res.data.data.empid);
-    window.localStorage.setItem("nama", res.data.data.nama);
-    window.localStorage.setItem("nik", res.data.data.nik);
-    window.localStorage.setItem("domain", res.data.data.domain); // BU ID for styling
-    window.localStorage.setItem("unit", res.data.data.domain); // Same as domain
-    window.localStorage.setItem("bu_id", res.data.data.bu_id);
-    window.localStorage.setItem("grade", res.data.data.grade);
-    window.localStorage.setItem("jabatan", res.data.data.jabatan);
-    window.localStorage.setItem("dept_id", res.data.data.dept_id);
-    window.localStorage.setItem("dept_name", res.data.data.dept_name);
-    window.localStorage.setItem("div_id", res.data.data.div_id);
-    window.localStorage.setItem("div_name", res.data.data.div_name);
-    window.localStorage.setItem("dir_id", res.data.data.dir_id);
-    window.localStorage.setItem("dir_name", res.data.data.dir_name);
-    window.localStorage.setItem("role", res.data.data.role);
-    window.localStorage.setItem("super", res.data.data.super);
-    window.localStorage.setItem("idle_time", res.data.data.idle);
-    axios.defaults.headers.common["Authorization"] = 'Bearer ' + res.data.data.token;
-    
+
+    // Token TIDAK ada di body — sudah di-set sebagai httpOnly cookie oleh backend.
+    // Simpan seluruh identitas sebagai satu blob terenkripsi di localStorage["session"].
+    const d = res.data.data;
+    setSession({
+      empid: d.empid,
+      nama: d.nama,
+      nik: d.nik,
+      domain: d.domain, // BU ID for styling
+      unit: d.domain,   // Same as domain
+      bu_id: d.bu_id,
+      grade: d.grade,
+      jabatan: d.jabatan,
+      dept_id: d.dept_id,
+      dept_name: d.dept_name,
+      div_id: d.div_id,
+      div_name: d.div_name,
+      dir_id: d.dir_id,
+      dir_name: d.dir_name,
+      role: d.role,
+      super: d.super,
+      idle_time: d.idle,
+    });
+
     success('Login berhasil');
     router.push("/"); 
     $q.loading.hide(); 
@@ -173,9 +176,8 @@ const onSubmit = async (values, actions) => {
 //   console.log("message: " + msg.barcode);
 // });
 
-
-
-window.localStorage.clear();
+// Saat halaman login dimuat, bersihkan sesi lama (tanpa menghapus preferensi UI).
+clearSession();
 </script>
 
 <style lang="scss" scoped>

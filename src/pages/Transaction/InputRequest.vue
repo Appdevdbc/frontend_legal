@@ -54,27 +54,30 @@
                 </q-select>
 
                 <q-select
-                  v-model="form.divisi"
-                  :options="listDivisi"
-                  option-value="div_id"
-                  option-label="div_nama"
+                  v-model="form.requestee_ids"
+                  :options="listEmployees"
+                  option-value="employee_id"
+                  option-label="employee_name"
                   emit-value
                   map-options
+                  multiple
                   outlined
                   dense
-                  label="Divisi"
-                  :rules="[val => !!val || 'Divisi is required']"
-                  @update:model-value="onDivisiChange"
+                  label="Requestee"
+                  :rules="[val => val && val.length > 0 || 'Requestee is required']"
+                  lazy-rules
+                  @update:model-value="onRequesteeChange"
                   class="tw-rounded"
+                  use-chips
                 >
                   <template v-slot:prepend>
-                    <q-icon name="account_tree" color="blue-6" size="20px"/>
+                    <q-icon name="people" color="blue-6" size="20px"/>
                   </template>
                   <template v-slot:label>
-                    Divisi <span class="tw-text-red-600">*</span>
+                    Requestee <span class="tw-text-red-600">*</span>
                   </template>
                 </q-select>
-                
+
                 <q-input
                   v-model="form.judul"
                   outlined
@@ -98,7 +101,11 @@
                     dense
                     type="date"
                     label="Periode Awal"
-                    :rules="[val => !!val || 'Periode awal is required']"
+                    :rules="[
+                      val => !!val || 'Periode awal is required',
+                      val => !form.periode_akhir || val <= form.periode_akhir || 'Periode awal tidak boleh lebih besar dari periode akhir'
+                    ]"
+                    lazy-rules
                     class="tw-flex-1 tw-rounded"
                   >
                     <template v-slot:prepend>
@@ -115,7 +122,11 @@
                     dense
                     type="date"
                     label="Periode Akhir"
-                    :rules="[val => !!val || 'Periode akhir is required']"
+                    :rules="[
+                      val => !!val || 'Periode akhir is required',
+                      val => !form.periode_awal || val >= form.periode_awal || 'Periode akhir tidak boleh lebih kecil dari periode awal'
+                    ]"
+                    lazy-rules
                     class="tw-flex-1 tw-rounded"
                   >
                     <template v-slot:label>
@@ -128,26 +139,24 @@
               <!-- Right Column -->
               <div class="tw-space-y-4">
                 <q-select
-                  v-model="form.requestee_ids"
-                  :options="listEmployees"
-                  option-value="employee_id"
-                  option-label="employee_name"
+                  v-model="form.divisi"
+                  :options="listDivisi"
+                  option-value="div_id"
+                  option-label="div_nama"
                   emit-value
                   map-options
-                  multiple
                   outlined
                   dense
-                  label="Requestee"
-                  :rules="[val => val && val.length > 0 || 'Requestee is required']"
-                  @update:model-value="onRequesteeChange"
+                  label="Divisi"
+                  :rules="[val => !!val || 'Divisi is required']"
+                  @update:model-value="onDivisiChange"
                   class="tw-rounded"
-                  use-chips
                 >
                   <template v-slot:prepend>
-                    <q-icon name="people" color="blue-6" size="20px"/>
+                    <q-icon name="account_tree" color="blue-6" size="20px"/>
                   </template>
                   <template v-slot:label>
-                    Requestee <span class="tw-text-red-600">*</span>
+                    Divisi <span class="tw-text-red-600">*</span>
                   </template>
                 </q-select>
                 
@@ -282,25 +291,52 @@
                             placeholder="Optional"
                           />
                         </td>
-                        <td class="tw-border tw-border-slate-300 tw-p-2">
-                          <q-file
-                            v-model="line.files"
-                            outlined
-                            dense
-                            multiple
-                            max-files="5"
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
-                            counter
-                          >
-                            <template v-slot:prepend>
-                              <q-icon name="attach_file" />
-                            </template>
-                          </q-file>
+                        <td class="tw-border tw-border-slate-300 tw-p-2 tw-max-w-xs">
+                          <div class="tw-overflow-hidden">
+                            <q-file
+                              v-model="line.files"
+                              outlined
+                              dense
+                              multiple
+                              max-files="5"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
+                              counter
+                              class="attachment-file-input"
+                            >
+                              <template v-slot:prepend>
+                                <q-icon name="attach_file" />
+                              </template>
+                              <template v-slot:hint v-if="line.files && line.files.length > 0">
+                                <div class="tw-text-xs">
+                                  <div v-for="(file, idx) in line.files" :key="idx" class="tw-truncate" :title="file.name">
+                                    {{ file.name }}
+                                  </div>
+                                </div>
+                              </template>
+                            </q-file>
+                            <!-- Custom tooltip for selected files -->
+                            <!-- <div v-if="line.files && line.files.length > 0" class="tw-mt-1">
+                              <q-badge 
+                                v-for="(file, idx) in line.files" 
+                                :key="`badge-${idx}`"
+                                color="blue-grey-5"
+                                class="tw-mr-1 tw-mb-1 tw-max-w-[140px] tw-truncate tw-cursor-help"
+                              >
+                                <span class="tw-truncate">{{ file.name }}</span>
+                                <q-tooltip class="tw-bg-slate-800 tw-text-xs" :offset="[0, 8]">
+                                  {{ file.name }}
+                                </q-tooltip>
+                              </q-badge>
+                            </div> -->
+                          </div>
                           <!-- Show existing files in edit mode -->
                           <div v-if="isEditMode && line.existingFiles" class="tw-mt-2 tw-text-xs tw-text-slate-600">
                             <div class="tw-font-semibold">Existing files:</div>
-                            <div v-for="(filename, idx) in line.existingFiles.split(',')" :key="idx" class="tw-ml-2">
+                            <div v-for="(filename, idx) in line.existingFiles.split(',')" :key="idx" class="tw-ml-2 tw-truncate tw-cursor-help" :title="filename">
                               - {{ filename }}
+                              <q-tooltip class="tw-bg-slate-800 tw-text-xs" :offset="[0, 8]">
+                                {{ filename }}
+                              </q-tooltip>
                             </div>
                             <div class="tw-text-amber-600 tw-mt-1">
                               <q-icon name="info" size="14px" />
@@ -826,5 +862,62 @@ const resetForm = () => {
 </script>
 
 <style scoped>
-/* Custom styles if needed */
+/* Prevent long filename from wrapping and overflowing */
+:deep(.attachment-file-input) {
+  max-width: 100%;
+  width: 100%;
+}
+
+:deep(.attachment-file-input .q-field__control) {
+  max-width: 100%;
+  min-width: 0; /* Allow flex shrink */
+}
+
+:deep(.attachment-file-input .q-field__native) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+:deep(.attachment-file-input .q-field__control-container) {
+  max-width: 100%;
+  min-width: 0;
+}
+
+:deep(.attachment-file-input .q-field__inner) {
+  max-width: 100%;
+}
+
+/* Style for file chips to prevent overflow */
+:deep(.attachment-file-input .q-chip) {
+  max-width: 150px;
+  overflow: hidden;
+}
+
+:deep(.attachment-file-input .q-chip__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/* Force text content inside q-file to truncate */
+:deep(.attachment-file-input .q-field__label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Custom badge styling for file names */
+.q-badge {
+  display: inline-flex;
+  max-width: 140px;
+}
+
+.q-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

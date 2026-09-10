@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import { role } from "./../utils";
+import { isLoggedIn } from "./../session.js";
 
 import master from './master';
 import dms from './wjs';
@@ -20,8 +21,8 @@ const router = createRouter({
     {
       path: "/",
       redirect: (to) => {
-        // Check if user has token
-        if (window.localStorage.getItem("token")) {
+        // Check if user is logged in (flag session, bukan token)
+        if (isLoggedIn()) {
           return "/master/dashboard";
         } else {
           return "/login";

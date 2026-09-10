@@ -18,11 +18,8 @@ import "./assets/styles/custom-loading.css";
 
 axios.defaults.baseURL = import.meta.env.VITE_API;
 
-// Set Authorization header dari localStorage jika token sudah ada
-const savedToken = window.localStorage.getItem('token');
-if (savedToken) {
-  axios.defaults.headers.common['Authorization'] = 'Bearer ' + savedToken;
-}
+// Auth via httpOnly cookie: kirim cookie otomatis pada setiap request.
+axios.defaults.withCredentials = true;
 
 // Assumes your root component is App.vue
 // and placed in same folder as main.js

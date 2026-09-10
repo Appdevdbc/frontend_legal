@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useNotify } from '../composables/useNotify';
+import { setSession, getSession, clearSession, isLoggedIn as sessionIsLoggedIn } from '../session.js';
 
+// CATATAN: Store ini adalah jalur scaffold (tidak dipakai jalur login aktif MainLogin.vue).
+// Diselaraskan agar tidak menyimpan token di localStorage — auth via httpOnly cookie.
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: null,
     isAuthenticated: false,
     loading: false
   }),
@@ -15,8 +17,8 @@ export const useAuthStore = defineStore('auth', {
     userNik: (state) => state.user?.nik,
     userName: (state) => state.user?.name,
     userEmail: (state) => state.user?.email,
-    userEmpId: (state) => state.user?.empid || state.user?.id || localStorage.getItem('empid'),
-    isLoggedIn: (state) => state.isAuthenticated && !!state.token
+    userEmpId: (state) => state.user?.empid || state.user?.id || getSession().empid,
+    isLoggedIn: (state) => state.isAuthenticated && sessionIsLoggedIn()
   },
 
   actions: {
@@ -34,18 +36,14 @@ export const useAuthStore = defineStore('auth', {
         });
 
         if (response.data.success) {
-          const { token, user } = response.data.data;
+          const { user } = response.data.data;
 
-          this.token = token;
           this.user = user;
           this.isAuthenticated = true;
 
-          // Store in localStorage
-          localStorage.setItem('wjs_token', token);
-          localStorage.setItem('wjs_user', JSON.stringify(user));
-          localStorage.setItem('token', token); // For compatibility
-          localStorage.setItem('empid', user.id);
-          localStorage.setItem('nik', user.nik);
+          // Token via httpOnly cookie (tidak disimpan di FE).
+          // Simpan identitas sebagai blob terenkripsi via session facade.
+          setSession({ ...user, empid: user.id, nik: user.nik });
 
           success('Login berhasil');
           return { success: true };
@@ -108,9 +106,9 @@ export const useAuthStore = defineStore('auth', {
         if (response.data.success) {
           this.user = response.data.data;
           this.isAuthenticated = true;
-          
-          // Update localStorage
-          localStorage.setItem('wjs_user', JSON.stringify(response.data.data));
+
+          // Simpan identitas ke session blob (bukan key terpisah).
+          setSession(response.data.data);
           
           return true;
         }
@@ -124,21 +122,12 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Refresh token
+     * Refresh token — backend men-set cookie baru; tidak ada token di body.
      */
     async refreshToken() {
       try {
         const response = await axios.post('/wjs/auth/refresh');
-        
-        if (response.data.success) {
-          const { token } = response.data.data;
-          this.token = token;
-          localStorage.setItem('wjs_token', token);
-          localStorage.setItem('token', token);
-          return true;
-        }
-        
-        return false;
+        return response.data.success === true;
       } catch (err) {
         console.error('Refresh token error:', err);
         return false;
@@ -146,38 +135,24 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Clear authentication data
+     * Clear authentication data (session blob + flag, tanpa preferensi UI)
      */
     clearAuth() {
       this.user = null;
-      this.token = null;
       this.isAuthenticated = false;
-      
-      // Clear localStorage
-      localStorage.removeItem('wjs_token');
-      localStorage.removeItem('wjs_user');
-      localStorage.removeItem('token');
-      localStorage.removeItem('empid');
-      localStorage.removeItem('nik');
-      localStorage.removeItem('nama');
-      localStorage.removeItem('domain');
-      localStorage.removeItem('role');
+      clearSession();
     },
 
     /**
-     * Initialize auth from localStorage
+     * Initialize auth from session facade
      */
     initFromStorage() {
-      const token = localStorage.getItem('wjs_token') || localStorage.getItem('token');
-      const userStr = localStorage.getItem('wjs_user');
-
-      if (token && userStr) {
+      if (sessionIsLoggedIn()) {
         try {
-          this.token = token;
-          this.user = JSON.parse(userStr);
+          this.user = getSession();
           this.isAuthenticated = true;
         } catch (err) {
-          console.error('Error parsing user data:', err);
+          console.error('Error reading session:', err);
           this.clearAuth();
         }
       }
@@ -189,16 +164,7 @@ export const useAuthStore = defineStore('auth', {
     setUser(user) {
       this.user = user;
       this.isAuthenticated = true;
-      localStorage.setItem('wjs_user', JSON.stringify(user));
-    },
-
-    /**
-     * Set token
-     */
-    setToken(token) {
-      this.token = token;
-      localStorage.setItem('wjs_token', token);
-      localStorage.setItem('token', token);
+      setSession(user);
     }
   }
 });
